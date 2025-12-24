@@ -6,9 +6,9 @@ from openai import OpenAI
 # ================== НАСТРОЙКИ ==================
 
 BOT_TOKEN = "PASTE_TELEGRAM_TOKEN"
-OPENAI_KEY = "PASTE_OPENAI_KEY"
+OPENAI_API_KEY = "PASTE_OPENAI_KEY"
 
-client = OpenAI(api_key=OPENAI_KEY)
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
