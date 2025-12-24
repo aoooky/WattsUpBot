@@ -6,8 +6,13 @@ from openai import OpenAI
 
 # ================== НАСТРОЙКИ ==================
 
-BOT_TOKEN = "PASTE_TELEGRAM_TOKEN"
-OPENAI_API_KEY = "PASTE_OPENAI_KEY"
+# Берём токены из переменных окружения
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Проверка, что токены заданы
+if not BOT_TOKEN or not OPENAI_API_KEY:
+    raise ValueError("Не заданы BOT_TOKEN или OPENAI_API_KEY в переменных окружения")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -39,7 +44,7 @@ SYSTEM_PROMPT = """
 - батареями и зарядкой
 - маршрутами поездок
 - зарядными станциями
-- поездками по Странам и Городам
+- поездками по странам и городам
 
 ТВОЯ ЛОГИКА РАБОТЫ:
 1. Определи модель электромобиля
@@ -49,7 +54,7 @@ SYSTEM_PROMPT = """
    - оцени запас хода
    - оцени расстояние
    - скажи, потребуется ли зарядка
-   - предложи города,места для остановки
+   - предложи города/места для остановки
 
 Все расчеты приблизительные.
 Если вопрос не по теме — вежливо откажись.
@@ -84,18 +89,24 @@ async def chat(message: types.Message):
             ],
         )
 
-        await message.answer(response.choices[0].message.content)
+        # В зависимости от версии SDK, корректное обращение к контенту:
+        answer = response.choices[0].message.content  # или response.choices[0].message["content"]
+        await message.answer(answer)
 
     except Exception as e:
         await message.answer(
-            "Произошла ошибка при расчёте\n"
-            "Попробуй ещё раз позже."
+            "Произошла ошибка при расчёте.\nПопробуй ещё раз позже."
         )
+        print("OpenAI error:", e)
 
 # ================== ЗАПУСК ==================
 
 async def main():
     await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
 
 if __name__ == "__main__":
     asyncio.run(main())
