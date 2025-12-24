@@ -6,16 +6,13 @@ from openai import OpenAI
 
 # ================== НАСТРОЙКИ ==================
 
-# Берём токены из переменных окружения
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# Проверка, что токены заданы
 if not BOT_TOKEN or not OPENAI_API_KEY:
     raise ValueError("Не заданы BOT_TOKEN или OPENAI_API_KEY в переменных окружения")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
-
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
@@ -60,10 +57,15 @@ SYSTEM_PROMPT = """
 Если вопрос не по теме — вежливо откажись.
 """
 
+# ================== СОСТОЯНИЕ ПОЛЬЗОВАТЕЛЕЙ ==================
+
+user_states = {}  # user_id -> True если пользователь в диалоге
+
 # ================== ОБРАБОТЧИКИ ==================
 
 @dp.message(CommandStart())
 async def start(message: types.Message):
+    user_states[message.from_user.id] = True
     await message.answer(
         "Привет! 🚗⚡\n"
         "Я помогаю планировать поездки на электромобилях.\n\n"
@@ -73,13 +75,20 @@ async def start(message: types.Message):
 
 @dp.message()
 async def chat(message: types.Message):
-    if not is_ev_related(message.text):
+    user_id = message.from_user.id
+
+    # Проверка ключевых слов только если пользователь ещё не в диалоге
+    if user_id not in user_states and not is_ev_related(message.text):
         await message.answer(
             "Я отвечаю только на вопросы по электромобилям\n"
             "Например: модель авто, маршрут, зарядка."
         )
         return
 
+    # Отмечаем, что пользователь в диалоге
+    user_states[user_id] = True
+
+    # Отправляем сообщение в OpenAI
     try:
         response = client.chat.completions.create(
             model="gpt-4.1-mini",
@@ -89,13 +98,12 @@ async def chat(message: types.Message):
             ],
         )
 
-        # В зависимости от версии SDK, корректное обращение к контенту:
         answer = response.choices[0].message.content  # или response.choices[0].message["content"]
         await message.answer(answer)
 
     except Exception as e:
         await message.answer(
-            "Произошла ошибка при расчёте.\nПопробуй ещё раз позже."
+            "Произошла ошибка при расчёте. Попробуй ещё раз позже."
         )
         print("OpenAI error:", e)
 
@@ -103,10 +111,6 @@ async def chat(message: types.Message):
 
 async def main():
     await dp.start_polling(bot)
-
-if __name__ == "__main__":
-    asyncio.run(main())
-
 
 if __name__ == "__main__":
     asyncio.run(main())
